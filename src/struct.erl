@@ -20,6 +20,7 @@
 
 -export([extend/2, withdraw/2, get_value/2, set_value/3, delete/2]).
 
+-define(JSON(Obj), {Obj}).
 
 %% @type key() = binary()
 %% @type value() = [integer() | float() | atom() | tuple() | binary() | string() | list()]
@@ -36,21 +37,21 @@ extend(S1, [S|T]) ->
 	extend(NewS, T);
 
 extend(S1, S2) ->
-	{struct, L1} = S1,
-	{struct, L2} = S2,
+	?JSON(L1) = S1,
+	?JSON(L2) = S2,
 	ext(L1, L2, []).
 
 ext(L1, [], Result) ->
-	{struct, lists:append(Result,L1)};
+	?JSON(lists:append(Result,L1));
 
-ext(L1, [{K, {struct, ChildL2}} | T], Result) ->
+ext(L1, [{K, ?JSON(ChildL2)} | T], Result) ->
 	case proplists:get_value(K, L1) of
-		{struct, ChildL1} ->
+		?JSON(ChildL1) ->
 			NewL1 = proplists:delete(K, L1),
-			ext(NewL1, T, [{K, extend({struct, ChildL1}, {struct, ChildL2})} | Result]);
+			ext(NewL1, T, [{K, extend(?JSON(ChildL1), ?JSON(ChildL2))} | Result]);
 		_ ->
 			NewL1 = proplists:delete(K, L1),
-			 ext(NewL1, T, [{K, {struct, ChildL2}} | Result])
+			 ext(NewL1, T, [{K, ?JSON(ChildL2)} | Result])
 	end;
 
 ext(L1, [{K, V} | T], Result) ->
@@ -66,21 +67,21 @@ withdraw(S1, [S|T]) ->
 	NewS = withdraw(S1, S),
 	withdraw(NewS, T);
 withdraw(S1, S2) ->
-	{struct, L1} = S1,
-	{struct, L2} = S2,
+	?JSON(L1) = S1,
+	?JSON(L2) = S2,
 	wdr(L1, L2, []).
 
 wdr([], _L2, Result) ->
-	{struct, Result};
+	?JSON(Result);
 
-wdr([{K, {struct, ChildL1}} | T], L2, Result) ->
+wdr([{K, ?JSON(ChildL1)} | T], L2, Result) ->
 	case proplists:get_value(K, L2) of
-		{struct, ChildL2} ->
-			wdr(T, L2, [{K, withdraw({struct, ChildL1}, {struct, ChildL2})} | Result]);
+		?JSON(ChildL2) ->
+			wdr(T, L2, [{K, withdraw(?JSON(ChildL1), ?JSON(ChildL2))} | Result]);
 		_ ->
 			case proplists:is_defined(K, L2) of 
 				false ->
-					wdr(T, L2, [{K, {struct, ChildL1}} | Result]);
+					wdr(T, L2, [{K, ?JSON(ChildL1)} | Result]);
 				true ->
 					wdr(T, L2, Result)
 			end
@@ -100,7 +101,7 @@ get_value(Path, Struct) when is_tuple(Path) ->
 	L = tuple_to_list(Path),
 	get_val(L, Struct);
 get_value(Key, Struct) ->
-	{struct, L} = Struct,
+	?JSON(L) = Struct,
 	proplists:get_value(Key, L).
 
 get_val(_, undefined) ->
@@ -115,27 +116,27 @@ get_val([Key | T], Struct) ->
 %% @spec set_value(path() | key(), value(),struct()) -> struct()
 set_value(Path, Value, Struct) when is_tuple(Path) ->
 	[H | T] = lists:reverse(tuple_to_list(Path)),
-	set_val(T, Struct, {struct, [{H, Value}]});
+	set_val(T, Struct, ?JSON([{H, Value}]));
 set_value(Key, Value, Struct) ->
-	extend(Struct, {struct, [{Key, Value}]}).
+	extend(Struct, ?JSON([{Key, Value}])).
 
 set_val([], Struct, Result) ->
 	extend(Struct, Result);
 set_val([Key | T], Struct, Result) ->
-	set_val(T, Struct, {struct, [{Key, Result}]}).
+	set_val(T, Struct, ?JSON([{Key, Result}])).
 
 
 %% @spec delete(path() | key(), struct()) -> value()
 delete(Path, Struct) when is_tuple(Path) ->
 	[H | T] = lists:reverse(tuple_to_list(Path)),
-	del(T, Struct, {struct, [{H}]});
+	del(T, Struct, ?JSON([{H}]));
 delete(Key, Struct) ->
-	{struct, L} = Struct,
-	{struct, proplists:delete(Key, L)}.
+	?JSON(L) = Struct,
+	?JSON(proplists:delete(Key, L)).
 
 del([], Struct, Result) ->
 	withdraw(Struct, Result);
 del([Key | T ], Struct, Result) ->
-	del(T, Struct, {struct, [{Key, Result}]}).
+	del(T, Struct, ?JSON([{Key, Result}])).
 
 
