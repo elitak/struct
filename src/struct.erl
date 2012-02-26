@@ -97,21 +97,17 @@ wdr([{K, V} | T], L2, Result) ->
 
 
 %% @spec get_value(path() | key(), struct()) -> value()
-get_value(Path, Struct) when is_tuple(Path) ->
-	L = tuple_to_list(Path),
-	get_val(L, Struct);
-get_value(Key, Struct) ->
-	?JSON(L) = Struct,
-	proplists:get_value(Key, L).
-
-get_val(_, undefined) ->
+% TODO fixup set_value the same way, then update spec with path() = tuple() | list()
+get_value(_, undefined) ->
 	undefined;
-get_val([Key], Struct) ->
+get_value(Key, ?JSON(List)) when is_binary(Key) ->
+	proplists:get_value(Key, List);
+get_value(Path, Struct) when is_tuple(Path) ->
+	get_value(tuple_to_list(Path), Struct);
+get_value([Key], Struct) ->
 	get_value(Key, Struct);
-get_val([Key | T], Struct) ->
-	NewStruct = get_value(Key, Struct),
-	get_val(T, NewStruct).
-
+get_value([Key | T], Struct) ->
+	get_value(T, get_value(Key, Struct)).
 
 %% @spec set_value(path() | key(), value(),struct()) -> struct()
 set_value(Path, Value, Struct) when is_tuple(Path) ->
